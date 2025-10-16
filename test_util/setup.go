@@ -10,28 +10,41 @@ import (
 
 	"cosmossdk.io/log"
 
+	extsolana "github.com/gagliardetto/solana-go"
 	"github.com/strangelove-ventures/noble-cctp-relayer/cmd"
 	"github.com/strangelove-ventures/noble-cctp-relayer/ethereum"
 	"github.com/strangelove-ventures/noble-cctp-relayer/noble"
+	"github.com/strangelove-ventures/noble-cctp-relayer/solana"
 	"github.com/strangelove-ventures/noble-cctp-relayer/types"
 )
 
 var logger log.Logger
 var EnvFile = os.ExpandEnv("$GOPATH/src/github.com/strangelove-ventures/noble-cctp-relayer/.env")
+var LocalEnvFile = ".env"
 
 func init() {
 	// define logger
 	logger = log.NewLogger(os.Stdout, log.LevelOption(zerolog.ErrorLevel))
 
-	err := godotenv.Load(EnvFile)
-	if err != nil {
-		logger.Error("error loading env file", "err", err)
-		os.Exit(1)
+	// Try loading a local .env first (project root), then GOPATH fallback, then relative from test dirs
+	if err := godotenv.Load(LocalEnvFile); err != nil {
+		// GOPATH-based fallback
+		if err2 := godotenv.Load(EnvFile); err2 != nil {
+			// Relative fallback when tests run from sub-packages like cmd/
+			if err3 := godotenv.Load("../.env"); err3 != nil {
+				// Log and continue; not all tests require .env
+				wd, _ := os.Getwd()
+				logger.Error(".env not found; continuing without env overrides", "local_err", err, "gopath_err", err2, "relative_err", err3, "cwd", wd)
+			}
+		}
 	}
 }
 
 func ConfigSetup(t *testing.T) (a *cmd.AppState, registeredDomains map[types.Domain]types.Chain) {
 	t.Helper()
+
+	// Generate a throwaway Solana key for tests (no funds required)
+	key, _ := extsolana.NewRandomPrivateKey()
 
 	var testConfig = types.Config{
 		Chains: map[string]types.ChainConfig{
@@ -45,6 +58,22 @@ func ConfigSetup(t *testing.T) (a *cmd.AppState, registeredDomains map[types.Dom
 				MinterPrivateKey: "1111111111111111111111111111111111111111111111111111111111111111",
 				RPC:              os.Getenv("SEPOLIA_RPC"),
 				WS:               os.Getenv("SEPOLIA_WS"),
+			},
+			"solana": &solana.Config{
+				RPC:                  os.Getenv("SOLANA_RPC"),
+				WS:                   os.Getenv("SOLANA_WS"),
+				Domain:               5,
+				MessageTransmitter:   "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd",
+				TokenMessengerMinter: "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
+				FiatToken:            "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+				RemoteTokens: map[types.Domain]string{
+					0: "0x487039debedbf32d260137b0a6f66b90962bec777250910d253781de326a716d",
+					4: "0x487039debedbf32d260137b0a6f66b90962bec777250910d253781de326a716d",
+				},
+				BroadcastRetries:       1,
+				BroadcastRetryInterval: 1,
+				MinMintAmount:          1,
+				MinterPrivateKey:       key.String(),
 			},
 		},
 		Circle: types.CircleSettings{

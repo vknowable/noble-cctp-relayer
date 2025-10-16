@@ -8,6 +8,7 @@ import (
 	"github.com/strangelove-ventures/noble-cctp-relayer/cmd"
 	"github.com/strangelove-ventures/noble-cctp-relayer/ethereum"
 	"github.com/strangelove-ventures/noble-cctp-relayer/noble"
+    "github.com/strangelove-ventures/noble-cctp-relayer/solana"
 )
 
 func TestConfig(t *testing.T) {
@@ -23,6 +24,11 @@ func TestConfig(t *testing.T) {
 	var ethType any = file.Chains["ethereum"]
 	_, ok = ethType.(*ethereum.ChainConfig)
 	require.True(t, ok)
+
+    // assert solana chainConfig correctly parsed
+    var solType any = file.Chains["solana"]
+    _, ok = solType.(*solana.Config)
+    require.True(t, ok)
 }
 
 func TestBlockQueueChannelSize(t *testing.T) {

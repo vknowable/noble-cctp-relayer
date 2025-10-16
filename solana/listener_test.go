@@ -22,16 +22,16 @@ func TestParseTransaction(t *testing.T) {
 	key, err := extsolana.NewRandomPrivateKey()
 	require.NoError(t, err)
 
-	chain := solana.NewSolana(solana.Config{
-		RPC: "https://corie-nhz8jx-fast-mainnet.helius-rpc.com",
-		WS:  "",
+    chain := solana.NewSolana(solana.Config{
+        RPC: "https://corie-nhz8jx-fast-mainnet.helius-rpc.com",
+        WS:  "",
 
-		MessageTransmitter:   "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd",
-		TokenMessengerMinter: "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
-		FiatToken:            "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        MessageTransmitter:   "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd",
+        TokenMessengerMinter: "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
+        FiatToken:            "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 
-		PrivateKey: key.String(),
-	})
+        MinterPrivateKey: key.String(),
+    })
 	require.NoError(t, chain.InitializeClients(context.Background(), log.NewNopLogger()))
 
 	// ACT: Attempt to fetch and parse a transaction.

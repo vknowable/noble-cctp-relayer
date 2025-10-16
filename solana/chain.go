@@ -42,7 +42,7 @@ type Solana struct {
 }
 
 func NewSolana(cfg Config) *Solana {
-	wallet, err := solana.WalletFromPrivateKeyBase58(cfg.PrivateKey)
+    wallet, err := solana.WalletFromPrivateKeyBase58(cfg.MinterPrivateKey)
 	if err != nil {
 		panic(err)
 	}

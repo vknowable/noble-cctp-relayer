@@ -3,3 +3,4 @@ noble-cctp-relayer
 .ignore
 .env
 .DS_Store
+.cursor

@@ -101,6 +101,37 @@ chains:
 
     minter-private-key: "" 
 
+  solana:
+    rpc: "" # Solana RPC
+    ws:  "" # Solana WebSocket endpoint
+    domain: 5
+
+    # CCTP program IDs
+    message-transmitter:    "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd"
+    token-messenger-minter: "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3"
+    fiat-token:             "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
+    # Map of source domain -> remote token (hex, 32-byte left-padded)
+    remote-tokens:
+      0: "0x487039debedbf32d260137b0a6f66b90962bec777250910d253781de326a716d" # Ethereum
+      4: "0x487039debedbf32d260137b0a6f66b90962bec777250910d253781de326a716d" # Noble
+
+    start-block: 0 # set to 0 to default to latest block
+    lookback-period: 5 # historical blocks to look back on launch
+
+    broadcast-retries: 5 # number of times to attempt the broadcast
+    broadcast-retry-interval: 10 # time between retries in seconds
+
+    min-mint-amount: 1000000 # minimum transaction amount needed for relayer to broadcast
+
+    # Both metrics values are OPTIONAL and used solely for Prometheus metrics.
+    metrics-denom: "SOL"
+    # metrics-exponent is used to determine the correct denomination. Wallet balances are originally queried in lamports. To convert lamports to SOL use 9.
+    # Example `walletBalance*10^-9`
+    metrics-exponent: 9
+
+    minter-private-key: "" # base58-encoded Solana keypair secret key
+
 # source domain id -> []destination domain id
 enabled-routes:
   0: [4] # ethereum -> noble

@@ -10,6 +10,7 @@ import (
 
 	"github.com/strangelove-ventures/noble-cctp-relayer/ethereum"
 	"github.com/strangelove-ventures/noble-cctp-relayer/noble"
+	"github.com/strangelove-ventures/noble-cctp-relayer/solana"
 	"github.com/strangelove-ventures/noble-cctp-relayer/types"
 )
 
@@ -108,8 +109,37 @@ func (a *AppState) validateConfig() error {
 				return err
 			}
 		case solanaChainName:
-			// TODO: Validate!!!
-			continue
+			// validate solana chain
+			sc := cfg.(*solana.Config)
+			err := a.validateChain(
+				name,
+				"", // Solana doesn't have chainID in the same format
+				fmt.Sprintf("%d", sc.Domain),
+				sc.RPC,
+				sc.WS,
+				sc.BroadcastRetries,
+				sc.BroadcastRetryInterval,
+				sc.MinMintAmount,
+			)
+			if err != nil {
+				return err
+			}
+			// Additional Solana-specific validations
+			if sc.MessageTransmitter == "" {
+				return fmt.Errorf("message-transmitter must be set in the config (chain: %s)", name)
+			}
+			if sc.TokenMessengerMinter == "" {
+				return fmt.Errorf("token-messenger-minter must be set in the config (chain: %s)", name)
+			}
+			if sc.FiatToken == "" {
+				return fmt.Errorf("fiat-token must be set in the config (chain: %s)", name)
+			}
+			if len(sc.RemoteTokens) == 0 {
+				return fmt.Errorf("remote-tokens must be set in the config (chain: %s)", name)
+			}
+			if sc.MinterPrivateKey == "" {
+				return fmt.Errorf("minter-private-key must be set in the config (chain: %s)", name)
+			}
 		default:
 			// validate eth based chains
 			cc := cfg.(*ethereum.ChainConfig)
@@ -209,3 +239,4 @@ func (a *AppState) validateCircleConfig() error {
 
 	return nil
 }
+
