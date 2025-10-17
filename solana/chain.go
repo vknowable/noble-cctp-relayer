@@ -42,7 +42,7 @@ type Solana struct {
 }
 
 func NewSolana(cfg Config) *Solana {
-    wallet, err := solana.WalletFromPrivateKeyBase58(cfg.MinterPrivateKey)
+	wallet, err := solana.WalletFromPrivateKeyBase58(cfg.MinterPrivateKey)
 	if err != nil {
 		panic(err)
 	}
@@ -147,17 +147,17 @@ func (s *Solana) StartListener(ctx context.Context, logger log.Logger, processin
 		}
 
 		txHash := log.Value.Signature.String()
-		event, err := s.ParseTransaction(ctx, txHash)
+		events, err := s.ParseTransactionMessages(ctx, txHash)
 		if err != nil {
 			panic(err)
 		}
 
-		if event != nil {
-			logger.Info(fmt.Sprintf("Found a new transfer to Domain %d", event.DestDomain), "tx", txHash)
+		if len(events) > 0 {
+			logger.Info(fmt.Sprintf("Found %d transfer(s)", len(events)), "tx", txHash)
 
 			processingQueue <- &types.TxState{
 				TxHash: txHash,
-				Msgs:   []*types.MessageState{event},
+				Msgs:   events,
 			}
 		}
 	}
@@ -208,6 +208,8 @@ func (s *Solana) Broadcast(ctx context.Context, _ log.Logger, inputs []*types.Me
 
 // TrackLatestBlockHeight continuously queries Solana for the latest block height.
 func (s *Solana) TrackLatestBlockHeight(ctx context.Context, logger log.Logger, metrics *relayer.PromMetrics) {
+	logger = logger.With("routine", "TrackLatestBlockHeight", "chain", s.Name(), "domain", s.Domain())
+
 	domain := fmt.Sprint(s.Domain())
 
 	updateBlockHeight := func() {
@@ -225,7 +227,7 @@ func (s *Solana) TrackLatestBlockHeight(ctx context.Context, logger log.Logger, 
 	updateBlockHeight()
 
 	for {
-		// TODO: Is 1s fast enough?
+		// 1 second interval is appropriate for Solana's ~400ms block time
 		timer := time.NewTimer(1 * time.Second)
 		select {
 		case <-timer.C:

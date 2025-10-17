@@ -25,10 +25,9 @@ type Instruction struct {
 	Data     []byte
 }
 
-// ParseTransaction is a utility that fetches a transaction from the Solana RPC
-// and returns all messages sent via CCTP. It does not apply any filtering.
-// TODO: Handle parsing of more than one message!
-func (s *Solana) ParseTransaction(ctx context.Context, hash string) (*types.MessageState, error) {
+// ParseTransactionMessages fetches a transaction from the Solana RPC and returns
+// all CCTP messages found in that transaction.
+func (s *Solana) ParseTransactionMessages(ctx context.Context, hash string) ([]*types.MessageState, error) {
 	tx, err := s.GetTransaction(ctx, s.endpoints.RPC, hash)
 	if err != nil {
 		return nil, err
@@ -60,90 +59,94 @@ func (s *Solana) ParseTransaction(ctx context.Context, hash string) (*types.Mess
 		}
 	}
 
+	var results []*types.MessageState
 	prefix := fmt.Sprintf("Program return: %s ", s.messageTransmitter.String())
 	for _, rawInstruction := range instructions {
 		decodedInstruction, err := message_transmitter.DecodeInstruction(rawInstruction.Accounts, rawInstruction.Data)
-		if err == nil {
-			switch instruction := decodedInstruction.Impl.(type) {
-			case *message_transmitter.SendMessage:
-				for _, tmp := range tx.Result.Meta.LogMessages {
-					if strings.HasPrefix(tmp, prefix) {
-						bz, err := base64.StdEncoding.DecodeString(strings.Split(tmp, prefix)[1])
-						if err != nil {
-							return nil, err
-						}
-						nonce := binary.LittleEndian.Uint64(bz)
-
-						message := cctptypes.Message{
-							SourceDomain:      uint32(s.Domain()),
-							DestinationDomain: instruction.Params.DestinationDomain,
-							Nonce:             nonce,
-							Sender:            instruction.GetSenderProgramAccount().PublicKey.Bytes(),
-							Recipient:         instruction.Params.Recipient.Bytes(),
-							DestinationCaller: make([]byte, 32),
-							MessageBody:       instruction.Params.MessageBody,
-						}
-
-						bz, err = message.Bytes()
-						if err != nil {
-							return nil, err
-						}
-
-						return &types.MessageState{
-							IrisLookupID: hex.EncodeToString(crypto.Keccak256(bz)),
-							Status:       types.Created,
-							SourceDomain: s.Domain(),
-							DestDomain:   types.Domain(instruction.Params.DestinationDomain),
-							SourceTxHash: hash,
-							MsgSentBytes: bz,
-							MsgBody:      message.MessageBody,
-							Created:      time.Now(),
-							Updated:      time.Now(),
-							Nonce:        nonce,
-						}, nil
+		if err != nil {
+			continue
+		}
+		switch instruction := decodedInstruction.Impl.(type) {
+		case *message_transmitter.SendMessage:
+			for _, tmp := range tx.Result.Meta.LogMessages {
+				if strings.HasPrefix(tmp, prefix) {
+					bz, err := base64.StdEncoding.DecodeString(strings.Split(tmp, prefix)[1])
+					if err != nil {
+						return nil, err
 					}
+					nonce := binary.LittleEndian.Uint64(bz)
+
+					message := cctptypes.Message{
+						SourceDomain:      uint32(s.Domain()),
+						DestinationDomain: instruction.Params.DestinationDomain,
+						Nonce:             nonce,
+						Sender:            instruction.GetSenderProgramAccount().PublicKey.Bytes(),
+						Recipient:         instruction.Params.Recipient.Bytes(),
+						DestinationCaller: make([]byte, 32),
+						MessageBody:       instruction.Params.MessageBody,
+					}
+
+					bz, err = message.Bytes()
+					if err != nil {
+						return nil, err
+					}
+
+					results = append(results, &types.MessageState{
+						IrisLookupID: hex.EncodeToString(crypto.Keccak256(bz)),
+						Status:       types.Created,
+						SourceDomain: s.Domain(),
+						DestDomain:   types.Domain(instruction.Params.DestinationDomain),
+						SourceTxHash: hash,
+						MsgSentBytes: bz,
+						MsgBody:      message.MessageBody,
+						Created:      time.Now(),
+						Updated:      time.Now(),
+						Nonce:        nonce,
+					})
+					break
 				}
-			case *message_transmitter.SendMessageWithCaller:
-				for _, tmp := range tx.Result.Meta.LogMessages {
-					if strings.HasPrefix(tmp, prefix) {
-						bz, err := base64.StdEncoding.DecodeString(strings.Split(tmp, prefix)[1])
-						if err != nil {
-							return nil, err
-						}
-						nonce := binary.LittleEndian.Uint64(bz)
-
-						message := cctptypes.Message{
-							SourceDomain:      uint32(s.Domain()),
-							DestinationDomain: instruction.Params.DestinationDomain,
-							Nonce:             nonce,
-							Sender:            instruction.GetSenderProgramAccount().PublicKey.Bytes(),
-							Recipient:         instruction.Params.Recipient.Bytes(),
-							DestinationCaller: instruction.Params.DestinationCaller.Bytes(),
-							MessageBody:       instruction.Params.MessageBody,
-						}
-
-						bz, err = message.Bytes()
-						if err != nil {
-							return nil, err
-						}
-
-						return &types.MessageState{
-							IrisLookupID: hex.EncodeToString(crypto.Keccak256(bz)),
-							Status:       types.Created,
-							SourceDomain: s.Domain(),
-							DestDomain:   types.Domain(instruction.Params.DestinationDomain),
-							SourceTxHash: hash,
-							MsgSentBytes: bz,
-							MsgBody:      message.MessageBody,
-							Created:      time.Now(),
-							Updated:      time.Now(),
-							Nonce:        nonce,
-						}, nil
+			}
+		case *message_transmitter.SendMessageWithCaller:
+			for _, tmp := range tx.Result.Meta.LogMessages {
+				if strings.HasPrefix(tmp, prefix) {
+					bz, err := base64.StdEncoding.DecodeString(strings.Split(tmp, prefix)[1])
+					if err != nil {
+						return nil, err
 					}
+					nonce := binary.LittleEndian.Uint64(bz)
+
+					message := cctptypes.Message{
+						SourceDomain:      uint32(s.Domain()),
+						DestinationDomain: instruction.Params.DestinationDomain,
+						Nonce:             nonce,
+						Sender:            instruction.GetSenderProgramAccount().PublicKey.Bytes(),
+						Recipient:         instruction.Params.Recipient.Bytes(),
+						DestinationCaller: instruction.Params.DestinationCaller.Bytes(),
+						MessageBody:       instruction.Params.MessageBody,
+					}
+
+					bz, err = message.Bytes()
+					if err != nil {
+						return nil, err
+					}
+
+					results = append(results, &types.MessageState{
+						IrisLookupID: hex.EncodeToString(crypto.Keccak256(bz)),
+						Status:       types.Created,
+						SourceDomain: s.Domain(),
+						DestDomain:   types.Domain(instruction.Params.DestinationDomain),
+						SourceTxHash: hash,
+						MsgSentBytes: bz,
+						MsgBody:      message.MessageBody,
+						Created:      time.Now(),
+						Updated:      time.Now(),
+						Nonce:        nonce,
+					})
+					break
 				}
 			}
 		}
 	}
 
-	return nil, nil //nolint:nilnil
+	return results, nil
 }
