@@ -193,7 +193,7 @@ func (a *AppState) validateChain(
 		return fmt.Errorf("chain name must be set in the config")
 	}
 
-	if chainID == "" {
+	if chainID == "" && name != solanaChainName {
 		return fmt.Errorf("chainID must be set in the config (chain: %s) (chainID: %s)", name, chainID)
 	}
 
@@ -239,4 +239,3 @@ func (a *AppState) validateCircleConfig() error {
 
 	return nil
 }
-
