@@ -12,7 +12,7 @@ type Config struct {
 	MessageTransmitter   string                  `yaml:"message-transmitter"`
 	TokenMessengerMinter string                  `yaml:"token-messenger-minter"`
 	FiatToken            string                  `yaml:"fiat-token"`
-	RemoteTokens         map[types.Domain]string `json:"remote-tokens"`
+	RemoteTokens         map[types.Domain]string `yaml:"remote-tokens"`
 
 	StartBlock     uint64 `yaml:"start-block"`
 	LookbackPeriod uint64 `yaml:"lookback-period"`
